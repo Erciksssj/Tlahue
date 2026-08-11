@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COMSOC Tlahuelilpan · Gestión de Solicitudes de Difusión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#262626;
+    --ink-dark:#0D0D0D;
+    --sello:#D61F1F;
+    --sello-dark:#941616;
+    --paper:#F2F2F2;
+    --card:#FFFFFF;
+    --line:#A6A6A6;
+    --text:#262626;
+    --text-soft:#595959;
+
+    --recibida-fg:#595959; --recibida-bg:#F2F2F2;
+    --diseno-fg:#D61F1F;   --diseno-bg:#FADBDB;
+    --publicada-fg:#FFFFFF;--publicada-bg:#941616;
+    --rechazada-fg:#FFFFFF;--rechazada-bg:#262626;
+
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(13,13,13,0.08), 0 4px 16px rgba(13,13,13,0.08);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--text);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,.font-display{font-family:'Fraunces',Georgia,serif;}
+  .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;}
+
+  a{color:inherit;}
+  button{font-family:inherit;}
+  :focus-visible{outline:2px solid var(--sello); outline-offset:2px;}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    background: linear-gradient(180deg, var(--ink) 0%, var(--ink-dark) 100%);
+    color:#fff;
+    padding: 18px 24px;
+  }
+  .topbar-inner{
+    max-width:1080px; margin:0 auto;
+    display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .emblem{
+    width:40px; height:40px; border-radius:50%;
+    background: radial-gradient(circle at 32% 28%, #4D4D4D, var(--ink-dark));
+    border:1.5px solid rgba(255,255,255,0.35);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces',serif; font-weight:600; font-size:16px; color:#F2F2F2;
+    flex-shrink:0;
+  }
+  .brand-text{line-height:1.15;}
+  .brand-text .top{font-size:11px; letter-spacing:0.09em; text-transform:uppercase; color:#A6A6A6;}
+  .brand-text .main{font-family:'Fraunces',serif; font-size:19px; font-weight:600; color:#fff;}
+
+  .nav{display:flex; gap:6px; background:rgba(255,255,255,0.08); padding:5px; border-radius:999px;}
+  .nav button{
+    border:none; background:transparent; color:#D9D9D9;
+    padding:9px 16px; border-radius:999px; font-size:13.5px; font-weight:600;
+    cursor:pointer; transition:background .15s, color .15s;
+    white-space:nowrap;
+  }
+  .nav button:hover{background:rgba(255,255,255,0.08); color:#fff;}
+  .nav button.active{background:#fff; color:var(--ink-dark);}
+
+  /* ---------- Layout ---------- */
+  .wrap{max-width:1080px; margin:0 auto; padding:36px 24px 80px;}
+  .view{display:none; animation: fade .35s ease;}
+  .view.active{display:block;}
+  @keyframes fade{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+
+  .eyebrow{font-size:12px; letter-spacing:0.10em; text-transform:uppercase; color:var(--sello-dark); font-weight:700; margin:0 0 6px;}
+  .page-title{font-size:30px; margin:0 0 8px; color:var(--ink-dark); font-weight:600;}
+  .page-sub{color:var(--text-soft); margin:0 0 32px; max-width:640px; line-height:1.5; font-size:15px;}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);}
+
+  /* ---------- Form ---------- */
+  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:20px; padding:32px;}
+  .form-grid .full{grid-column:1/-1;}
+  @media (max-width:640px){ .form-grid{grid-template-columns:1fr; padding:22px;} }
+
+  .field label{display:block; font-size:13px; font-weight:600; color:var(--ink-dark); margin-bottom:6px;}
+  .field .req{color:var(--rechazada-fg); margin-left:2px;}
+  .field input, .field textarea, .field select{
+    width:100%; padding:11px 12px; border:1.5px solid var(--line); border-radius:8px;
+    font-family:inherit; font-size:14.5px; color:var(--text); background:#FCFBF8;
+    transition:border-color .15s, background .15s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus{
+    border-color:var(--sello); background:#fff; outline:none;
+  }
+  .field textarea{resize:vertical; min-height:84px;}
+  .field .hint{font-size:12px; color:var(--text-soft); margin-top:5px;}
+  .field.error input, .field.error textarea{border-color:var(--rechazada-fg); background:#FDF4F3;}
+  .field .err-msg{font-size:12.5px; color:var(--rechazada-fg); margin-top:5px; display:none;}
+  .field.error .err-msg{display:block;}
+
+  .file-drop{
+    border:1.5px dashed var(--line); border-radius:8px; padding:18px; text-align:center;
+    font-size:13.5px; color:var(--text-soft); background:#FCFBF8; cursor:pointer;
+  }
+  .file-drop.has-file{border-color:var(--sello); color:var(--sello-dark); background:#EFF6F5; font-weight:600;}
+
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; justify-content:center;
+    border:none; border-radius:8px; padding:12px 22px; font-size:14.5px; font-weight:700;
+    cursor:pointer; transition:transform .1s, background .15s, box-shadow .15s;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--ink); color:#fff;}
+  .btn-primary:hover{background:var(--ink-dark);}
+  .btn-ghost{background:transparent; color:var(--ink); border:1.5px solid var(--line);}
+  .btn-ghost:hover{border-color:var(--ink);}
+  .btn-sm{padding:8px 14px; font-size:13px;}
+
+  .form-footer{display:flex; align-items:center; justify-content:space-between; padding:20px 32px; border-top:1px solid var(--line); gap:12px; flex-wrap:wrap;}
+
+  /* ---------- Sello / folio stamp ---------- */
+  .sello-badge{
+    display:inline-flex; flex-direction:column; align-items:center; gap:2px;
+    border:1.5px dashed var(--sello); border-radius:10px; padding:14px 22px;
+    transform:rotate(-1.5deg); background:#FADBDB;
+  }
+  .sello-badge .label{font-size:10.5px; letter-spacing:0.12em; text-transform:uppercase; color:var(--sello-dark); font-weight:700;}
+  .sello-badge .folio{font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:600; color:var(--sello-dark); letter-spacing:0.02em;}
+  .sello-mini{
+    display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:11.5px; font-weight:600;
+    color:var(--sello-dark); background:#FADBDB; border:1px dashed var(--sello);
+    border-radius:6px; padding:2px 8px; letter-spacing:0.01em;
+  }
+
+  /* ---------- Confirmation ---------- */
+  .confirm-card{padding:44px; text-align:center;}
+  .confirm-icon{width:52px; height:52px; border-radius:50%; background:var(--publicada-bg); color:var(--publicada-fg);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 18px; font-size:26px;}
+  .confirm-title{font-size:22px; color:var(--ink-dark); margin:0 0 10px;}
+  .confirm-text{color:var(--text-soft); font-size:14.5px; max-width:440px; margin:0 auto 26px; line-height:1.55;}
+
+  /* ---------- Consulta ---------- */
+  .search-row{display:flex; gap:10px; padding:28px 32px; flex-wrap:wrap;}
+  .search-row .field{flex:1; min-width:220px;}
+  .result-box{padding:0 32px 32px;}
+  .empty-state{padding:50px 32px; text-align:center; color:var(--text-soft);}
+  .empty-state .glyph{font-size:34px; margin-bottom:10px; opacity:.6;}
+
+  .status-pill{
+    display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:999px;
+    font-size:12.5px; font-weight:700;
+  }
+  .status-dot{width:7px; height:7px; border-radius:50%;}
+  .status-Recibida{background:var(--recibida-bg); color:var(--recibida-fg);}
+  .status-Recibida .status-dot{background:var(--recibida-fg);}
+  .status-EnDiseno{background:var(--diseno-bg); color:var(--diseno-fg);}
+  .status-EnDiseno .status-dot{background:var(--diseno-fg);}
+  .status-Publicada{background:var(--publicada-bg); color:var(--publicada-fg);}
+  .status-Publicada .status-dot{background:var(--publicada-fg);}
+  .status-Rechazada{background:var(--rechazada-bg); color:var(--rechazada-fg);}
+  .status-Rechazada .status-dot{background:var(--rechazada-fg);}
+
+  .result-detail{border-top:1px solid var(--line); padding-top:22px; margin-top:6px;}
+  .result-row{display:flex; justify-content:space-between; gap:16px; padding:9px 0; font-size:14px; border-bottom:1px dashed var(--line);}
+  .result-row:last-child{border-bottom:none;}
+  .result-row .k{color:var(--text-soft);}
+  .result-row .v{font-weight:600; color:var(--ink-dark); text-align:right;}
+
+  /* ---------- Panel / Kanban ---------- */
+  .panel-toolbar{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;}
+  .panel-stats{display:flex; gap:10px; flex-wrap:wrap;}
+  .stat-chip{background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 14px; font-size:12.5px; color:var(--text-soft);}
+  .stat-chip b{color:var(--ink-dark); font-family:'IBM Plex Mono',monospace; font-size:14px; margin-right:4px;}
+
+  .kanban{display:grid; grid-template-columns:repeat(4,1fr); gap:16px;}
+  @media (max-width:900px){ .kanban{grid-template-columns:1fr 1fr;} }
+  @media (max-width:560px){ .kanban{grid-template-columns:1fr;} }
+
+  .kcol{background:#EFEAE0; border-radius:var(--radius); padding:12px; min-height:160px;}
+  .kcol-head{display:flex; align-items:center; justify-content:space-between; padding:4px 6px 12px;}
+  .kcol-head .name{font-size:13px; font-weight:700;}
+  .kcol-head .count{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-soft);}
+  .kcol[data-s="Recibida"] .name{color:var(--recibida-fg);}
+  .kcol[data-s="EnDiseno"] .name{color:var(--diseno-fg);}
+  .kcol[data-s="Publicada"] .name{color:var(--publicada-fg);}
+  .kcol[data-s="Rechazada"] .name{color:var(--rechazada-fg);}
+
+  .kcard{background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px; margin-bottom:10px; cursor:pointer; transition:box-shadow .15s, transform .1s;}
+  .kcard:hover{box-shadow:var(--shadow); transform:translateY(-1px);}
+  .kcard .evt{font-size:13.5px; font-weight:700; color:var(--ink-dark); margin-bottom:4px; line-height:1.3;}
+  .kcard .dir{font-size:12px; color:var(--text-soft); margin-bottom:8px;}
+  .kcard .urgent{display:inline-block; font-size:10.5px; font-weight:700; color:#941616; background:#FADBDB; padding:1px 7px; border-radius:999px; margin-bottom:6px;}
+  .kcol-empty{font-size:12.5px; color:#8C8C8C; text-align:center; padding:20px 6px;}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed; inset:0; background:rgba(13,13,13,0.55); display:none; align-items:flex-start; justify-content:center; padding:5vh 16px; z-index:50; overflow-y:auto;}
+  .overlay.active{display:flex;}
+  .modal{background:#fff; border-radius:14px; max-width:560px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.25); margin-bottom:5vh;}
+  .modal-head{display:flex; justify-content:space-between; align-items:flex-start; padding:24px 26px 14px; gap:16px;}
+  .modal-head h3{margin:0 0 6px; font-size:19px; color:var(--ink-dark);}
+  .modal-close{border:none; background:#F1EFE9; color:var(--text-soft); width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:15px; flex-shrink:0;}
+  .modal-body{padding:0 26px 26px;}
+  .modal-body .result-detail{margin-top:14px;}
+  .status-actions{display:flex; gap:8px; flex-wrap:wrap; margin:18px 0 6px;}
+  .status-actions button{border-radius:999px;}
+  .comment-box{width:100%; margin-top:10px;}
+  .timeline{margin-top:18px; border-top:1px solid var(--line); padding-top:14px;}
+  .timeline-item{font-size:12.5px; color:var(--text-soft); padding:6px 0; display:flex; gap:8px;}
+  .timeline-item .t-dot{width:6px; height:6px; border-radius:50%; background:var(--sello); margin-top:5px; flex-shrink:0;}
+
+  .role-toggle{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-soft);}
+  .role-toggle select{border:1px solid var(--line); border-radius:6px; padding:5px 8px; font-family:inherit; font-size:12.5px; background:#fff;}
+
+  .footer-note{text-align:center; color:#A6A6A6; font-size:12px; margin-top:48px;}
+  .toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--ink-dark); color:#fff; padding:12px 20px; border-radius:999px; font-size:13.5px; font-weight:600; box-shadow:0 10px 30px rgba(0,0,0,0.25); opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:100;}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="emblem">CS</div>
+      <div class="brand-text">
+        <div class="top">Ayuntamiento de Tlahuelilpan</div>
+        <div class="main">Comunicación Social</div>
+      </div>
+    </div>
+    <div class="nav">
+      <button data-view="formulario" class="active">Nueva solicitud</button>
+      <button data-view="consulta">Consultar folio</button>
+      <button data-view="panel">Panel de control</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ===================== VIEW: FORMULARIO ===================== -->
+  <section class="view active" id="view-formulario">
+    <p class="eyebrow">Dirección municipal solicitante</p>
+    <h1 class="page-title">Registrar solicitud de difusión</h1>
+    <p class="page-sub">Completa los datos del evento o campaña. Todos los campos marcados con <span style="color:#D61F1F">*</span> son obligatorios — el sistema no permitirá enviar la solicitud si falta información.</p>
+
+    <div id="formulario-card" class="card">
+      <form id="solicitud-form">
+        <div class="form-grid">
+          <div class="field full" data-f="evento">
+            <label>Nombre del evento o campaña <span class="req">*</span></label>
+            <input type="text" name="evento" placeholder="Ej. Feria del Empleo Tlahuelilpan 2026">
+            <div class="err-msg">Escribe el nombre del evento o campaña.</div>
+          </div>
+
+          <div class="field" data-f="fecha">
+            <label>Fecha del evento <span class="req">*</span></label>
+            <input type="date" name="fecha">
+            <div class="err-msg">Selecciona la fecha del evento.</div>
+          </div>
+
+          <div class="field" data-f="hora">
+            <label>Hora del evento <span class="req">*</span></label>
+            <input type="time" name="hora">
+            <div class="err-msg">Indica la hora del evento.</div>
+          </div>
+
+          <div class="field full" data-f="lugar">
+            <label>Lugar <span class="req">*</span></label>
+            <input type="text" name="lugar" placeholder="Ej. Auditorio Municipal">
+            <div class="err-msg">Indica el lugar donde se realizará.</div>
+          </div>
+
+          <div class="field" data-f="direccion">
+            <label>Dirección responsable <span class="req">*</span></label>
+            <select name="direccion">
+              <option value="">Selecciona tu dirección…</option>
+              <option value="1">Dirección de Desarrollo Económico</option>
+              <option value="2">Dirección de Salud Municipal</option>
+              <option value="3">Dirección de Deportes</option>
+              <option value="4">Dirección de Obras Públicas</option>
+            </select>
+            <div class="err-msg">Selecciona la dirección solicitante.</div>
+          </div>
+
+          <div class="field" data-f="contacto">
+            <label>Nombre de contacto <span class="req">*</span></label>
+            <input type="text" name="contacto" placeholder="Nombre de quien solicita">
+            <div class="err-msg">Indica el nombre de contacto.</div>
+          </div>
+
+          <div class="field full" data-f="correo">
+            <label>Correo de contacto <span class="req">*</span></label>
+            <input type="email" name="correo" placeholder="nombre@tlahuelilpan.gob.mx">
+            <div class="hint">Aquí recibirás el folio y las notificaciones de estatus.</div>
+            <div class="err-msg">Escribe un correo electrónico válido.</div>
+          </div>
+
+          <div class="field full" data-f="texto">
+            <label>Texto sugerido para la publicación <span class="req">*</span></label>
+            <textarea name="texto" placeholder="Redacta el texto que debería acompañar la publicación…"></textarea>
+            <div class="err-msg">Escribe el texto sugerido para la difusión.</div>
+          </div>
+
+          <div class="field full" data-f="adjunto">
+            <label>Adjuntar imagen o PDF <span class="req">*</span></label>
+            <div class="file-drop" id="file-drop">Selecciona o arrastra un archivo (imagen o PDF)</div>
+            <input type="file" name="adjunto" id="file-input" accept="image/*,.pdf" style="display:none">
+            <div class="err-msg">Adjunta al menos un archivo.</div>
+          </div>
+        </div>
+
+        <div class="form-footer">
+          <span style="font-size:12.5px;color:var(--text-soft);">El folio se genera automáticamente al enviar.</span>
+          <button type="submit" class="btn btn-primary">Enviar solicitud →</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Confirmation state (hidden until submit) -->
+    <div id="confirm-card" class="card confirm-card" style="display:none;">
+      <div class="confirm-icon">✓</div>
+      <h2 class="confirm-title">Solicitud recibida</h2>
+      <p class="confirm-text" id="confirm-text">Tu solicitud fue registrada correctamente. Guarda tu folio para consultar el estatus más adelante.</p>
+      <div class="sello-badge">
+        <div class="label">Folio de seguimiento</div>
+        <div class="folio" id="confirm-folio">COMSOC-2026-001</div>
+      </div>
+      <div style="margin-top:26px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+        <button class="btn btn-ghost" id="btn-otra-solicitud">Registrar otra solicitud</button>
+        <button class="btn btn-primary" id="btn-ir-consulta">Consultar este folio</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== VIEW: CONSULTA ===================== -->
+  <section class="view" id="view-consulta">
+    <p class="eyebrow">Consulta pública</p>
+    <h1 class="page-title">Consultar estatus por folio</h1>
+    <p class="page-sub">Ingresa el número de folio que recibiste por correo al registrar tu solicitud.</p>
+
+    <div class="card">
+      <div class="search-row">
+        <div class="field">
+          <input type="text" id="consulta-input" placeholder="Ej. COMSOC-2026-001" class="mono">
+        </div>
+        <button class="btn btn-primary" id="btn-consultar" style="align-self:flex-start;">Consultar</button>
+      </div>
+      <div class="result-box" id="consulta-result"></div>
+    </div>
+  </section>
+
+  <!-- ===================== VIEW: PANEL ===================== -->
+  <section class="view" id="view-panel">
+    <div class="panel-toolbar">
+      <div>
+        <p class="eyebrow">Vista interna · Encargado de Comunicación Social</p>
+        <h1 class="page-title" style="margin-bottom:4px;">Panel de control</h1>
+        <p class="page-sub" style="margin-bottom:0;">Todas las solicitudes recibidas, organizadas por estatus. Haz clic en una tarjeta para ver el detalle y actualizar su estatus.</p>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="btn-logout" style="display:none;">Cerrar sesión</button>
+    </div>
+
+    <div class="card" id="login-card" style="max-width:380px; padding:28px;">
+      <h3 style="margin:0 0 6px;font-size:16px;color:var(--ink-dark);">Acceso de Administrador</h3>
+      <p style="font-size:13px;color:var(--text-soft);margin:0 0 18px;">Inicia sesión para gestionar las solicitudes (RF12).</p>
+      <div class="field" style="margin-bottom:12px;">
+        <label>Correo</label>
+        <input type="email" id="login-correo" value="comsoc@tlahuelilpan.gob.mx">
+      </div>
+      <div class="field" style="margin-bottom:16px;">
+        <label>Contraseña</label>
+        <input type="password" id="login-contrasena" value="admin2026">
+      </div>
+      <button class="btn btn-primary" id="btn-login" style="width:100%;">Iniciar sesión</button>
+      <div id="login-error" style="color:var(--rechazada-fg);font-size:12.5px;margin-top:10px;display:none;"></div>
+    </div>
+
+    <div class="panel-stats" id="panel-stats" style="margin-bottom:20px; display:none;"></div>
+    <div class="kanban" id="kanban" style="display:none;"></div>
+  </section>
+
+  <p class="footer-note">Sistema de Gestión de Solicitudes de Difusión — COMSOC Tlahuelilpan · Conectado a la API real (Node.js + Express + PostgreSQL)</p>
+</div>
+
+<!-- Modal for solicitud detail -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <span class="sello-mini" id="modal-folio">COMSOC-2026-001</span>
+        <h3 id="modal-evento" style="margin-top:8px;">Nombre del evento</h3>
+      </div>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-status-pill"></div>
+      <div class="result-detail" id="modal-detail"></div>
+
+      <div class="status-actions" id="modal-actions"></div>
+      <textarea class="comment-box field" id="modal-comment" placeholder="Comentario opcional para este cambio de estatus…" style="padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13.5px;min-height:56px;"></textarea>
+
+      <div class="timeline" id="modal-timeline"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const API = "http://localhost:3001";
+  const STATUS_LABEL = {Recibida:"Recibida", "En diseno":"En diseño", Publicada:"Publicada", Rechazada:"Rechazada"};
+  const NEXT_ALLOWED = { "Recibida":["En diseno","Rechazada"], "En diseno":["Publicada","Rechazada"], "Publicada":[], "Rechazada":[] };
+  const DIRECCIONES = {1:"Dirección de Desarrollo Económico", 2:"Dirección de Salud Municipal", 3:"Dirección de Deportes", 4:"Dirección de Obras Públicas"};
+  const CSS_KEY = {Recibida:"Recibida", "En diseno":"EnDiseno", Publicada:"Publicada", Rechazada:"Rechazada"};
+  function cssKey(estatus){ return CSS_KEY[estatus] || estatus.replace(/\s+/g,""); }
+
+  let authToken = null;
+
+  // ---------- API helper ----------
+  async function api(path, opts={}){
+    const headers = Object.assign({"Content-Type":"application/json"}, opts.headers||{});
+    if(authToken) headers["Authorization"] = "Bearer "+authToken;
+    const res = await fetch(API+path, Object.assign({}, opts, {headers}));
+    let data = null;
+    try{ data = await res.json(); }catch(e){}
+    if(!res.ok){ const err = new Error((data&&data.error)||("HTTP "+res.status)); err.status=res.status; err.data=data; throw err; }
+    return data;
+  }
+
+  // ---------- Navigation ----------
+  const navButtons = document.querySelectorAll('.nav button');
+  navButtons.forEach(btn=>{ btn.addEventListener('click', ()=>switchView(btn.dataset.view)); });
+  function switchView(name){
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+name).classList.add('active');
+    navButtons.forEach(b=>b.classList.toggle('active', b.dataset.view===name));
+    if(name==='panel'){ authToken ? renderKanban() : showLogin(); }
+  }
+
+  // ---------- Toast ----------
+  let toastTimer;
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>t.classList.remove('show'), 2800);
+  }
+
+  // ---------- File drop (visual only - la carga real de archivos queda fuera del alcance del incremento actual) ----------
+  const fileDrop = document.getElementById('file-drop');
+  const fileInput = document.getElementById('file-input');
+  fileDrop.addEventListener('click', ()=>fileInput.click());
+  fileInput.addEventListener('change', ()=>{
+    if(fileInput.files.length){
+      fileDrop.textContent = '📎 ' + fileInput.files[0].name;
+      fileDrop.classList.add('has-file');
+      clearError('adjunto');
+    }
+  });
+
+  // ---------- Form validation & submit ----------
+  const form = document.getElementById('solicitud-form');
+  const REQUIRED = ['evento','fecha','hora','lugar','direccion','contacto','correo','texto'];
+
+  function setError(name){ const el = form.querySelector('[data-f="'+name+'"]'); if(el) el.classList.add('error'); }
+  function clearError(name){ const el = form.querySelector('[data-f="'+name+'"]'); if(el) el.classList.remove('error'); }
+
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    let valid = true;
+    REQUIRED.forEach(clearError); clearError('adjunto');
+
+    const data = Object.fromEntries(new FormData(form).entries());
+    REQUIRED.forEach(name=>{ if(!data[name] || !data[name].trim()){ setError(name); valid=false; } });
+    if(data.correo && !/^\S+@\S+\.\S+$/.test(data.correo)){ setError('correo'); valid=false; }
+    if(!fileInput.files.length){ setError('adjunto'); valid=false; }
+    if(!valid){ toast('Faltan campos obligatorios'); return; }
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true; submitBtn.textContent = 'Enviando…';
+
+    try{
+      const result = await api('/solicitudes', { method:'POST', body: JSON.stringify({
+        nombre_evento: data.evento, fecha_evento: data.fecha, hora_evento: data.hora, lugar: data.lugar,
+        id_direccion: parseInt(data.direccion,10), contacto_nombre: data.contacto, contacto_correo: data.correo,
+        texto_sugerido: data.texto,
+      })});
+
+      document.getElementById('confirm-folio').textContent = result.solicitud.folio;
+      document.getElementById('confirm-text').textContent = 'Tu solicitud "'+data.evento+'" fue registrada correctamente en el sistema. Se envió un correo de confirmación a '+data.correo+'.';
+      document.getElementById('formulario-card').style.display='none';
+      document.getElementById('confirm-card').style.display='block';
+      window.__lastFolio = result.solicitud.folio;
+    }catch(err){
+      toast('Error al registrar: '+err.message);
+    }
+    submitBtn.disabled=false; submitBtn.textContent='Enviar solicitud →';
+  });
+
+  document.getElementById('btn-otra-solicitud').addEventListener('click', ()=>{
+    form.reset();
+    fileDrop.textContent='Selecciona o arrastra un archivo (imagen o PDF)';
+    fileDrop.classList.remove('has-file');
+    document.getElementById('confirm-card').style.display='none';
+    document.getElementById('formulario-card').style.display='block';
+  });
+  document.getElementById('btn-ir-consulta').addEventListener('click', ()=>{
+    switchView('consulta');
+    document.getElementById('consulta-input').value = window.__lastFolio || '';
+    doConsulta();
+  });
+
+  // ---------- Consulta publica (RF08 - GET /solicitudes/:folio) ----------
+  document.getElementById('btn-consultar').addEventListener('click', doConsulta);
+  document.getElementById('consulta-input').addEventListener('keydown', e=>{ if(e.key==='Enter') doConsulta(); });
+
+  async function doConsulta(){
+    const raw = document.getElementById('consulta-input').value.trim().toUpperCase();
+    const box = document.getElementById('consulta-result');
+    if(!raw){ box.innerHTML=''; return; }
+    box.innerHTML = '<div class="empty-state">Consultando…</div>';
+    try{
+      const sol = await api('/solicitudes/'+encodeURIComponent(raw));
+      const last = sol.ultimo_cambio;
+      box.innerHTML = `
+        <div class="result-detail" style="border-top:none; margin-top:8px; padding-top:0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+            <div>
+              <div style="font-weight:700;font-size:16px;color:var(--ink-dark);">${escapeHtml(sol.nombre_evento)}</div>
+              <div class="mono" style="font-size:12px;color:var(--text-soft);">${escapeHtml(sol.folio)}</div>
+            </div>
+            <span class="status-pill status-${cssKey(sol.estatus)}"><span class="status-dot"></span>${STATUS_LABEL[sol.estatus]}</span>
+          </div>
+          <div class="result-row"><span class="k">Dirección solicitante</span><span class="v">${escapeHtml(sol.direccion_nombre)}</span></div>
+          <div class="result-row"><span class="k">Última actualización</span><span class="v">${formatDate(last ? last.fecha_cambio : sol.fecha_creacion)}</span></div>
+          ${last && last.comentario ? `<div class="result-row"><span class="k">Comentario</span><span class="v">${escapeHtml(last.comentario)}</span></div>` : ''}
+        </div>
+      `;
+    }catch(err){
+      box.innerHTML = '<div class="empty-state"><div class="glyph">⚠︎</div>No se encontró ninguna solicitud con el folio <strong class="mono">'+escapeHtml(raw)+'</strong>. Verifica que esté escrito correctamente.</div>';
+    }
+  }
+
+  // ---------- Login (RF12 - POST /auth/login) ----------
+  function showLogin(){
+    document.getElementById('login-card').style.display='block';
+    document.getElementById('panel-stats').style.display='none';
+    document.getElementById('kanban').style.display='none';
+    document.getElementById('btn-logout').style.display='none';
+  }
+  document.getElementById('btn-login').addEventListener('click', async ()=>{
+    const correo = document.getElementById('login-correo').value;
+    const contrasena = document.getElementById('login-contrasena').value;
+    const errBox = document.getElementById('login-error');
+    errBox.style.display='none';
+    try{
+      const r = await api('/auth/login', {method:'POST', body: JSON.stringify({correo, contrasena})});
+      authToken = r.token;
+      document.getElementById('login-card').style.display='none';
+      document.getElementById('panel-stats').style.display='flex';
+      document.getElementById('kanban').style.display='grid';
+      document.getElementById('btn-logout').style.display='inline-flex';
+      toast('Sesión iniciada como '+r.usuario.nombre);
+      renderKanban();
+    }catch(err){
+      errBox.textContent = err.status===401 ? 'Correo o contraseña incorrectos.' : ('Error: '+err.message);
+      errBox.style.display='block';
+    }
+  });
+  document.getElementById('btn-logout').addEventListener('click', ()=>{
+    authToken = null; toast('Sesión cerrada'); showLogin();
+  });
+
+  // ---------- Panel / Kanban (RF05, RF06 - GET/PATCH /solicitudes) ----------
+  async function renderKanban(){
+    const kanban = document.getElementById('kanban');
+    const statsBox = document.getElementById('panel-stats');
+    kanban.innerHTML = '<div style="padding:30px;color:#8C8C8C;">Cargando solicitudes…</div>';
+    let all;
+    try{ all = await api('/solicitudes'); }
+    catch(err){ kanban.innerHTML = '<div class="empty-state">Error al cargar: '+err.message+'</div>'; return; }
+
+    statsBox.innerHTML = `
+      <div class="stat-chip"><b>${all.length}</b>total</div>
+      <div class="stat-chip"><b>${all.filter(s=>s.estatus==='Recibida').length}</b>recibidas</div>
+      <div class="stat-chip"><b>${all.filter(s=>s.estatus==='En diseno').length}</b>en diseño</div>
+      <div class="stat-chip"><b>${all.filter(s=>s.estatus==='Publicada').length}</b>publicadas</div>
+    `;
+
+    kanban.innerHTML = '';
+    Object.keys(STATUS_LABEL).forEach(st=>{
+      const col = document.createElement('div');
+      col.className='kcol'; col.dataset.s = cssKey(st);
+      const items = all.filter(s=>s.estatus===st).sort((a,b)=> new Date(b.fecha_creacion)-new Date(a.fecha_creacion));
+      col.innerHTML = `<div class="kcol-head"><span class="name">${STATUS_LABEL[st]}</span><span class="count">${items.length}</span></div>`;
+      if(items.length===0){
+        col.innerHTML += '<div class="kcol-empty">Sin solicitudes</div>';
+      } else {
+        items.forEach(s=>{
+          const card = document.createElement('div');
+          card.className='kcard';
+          card.innerHTML = `
+            <div class="evt">${escapeHtml(s.nombre_evento)}</div>
+            <div class="dir">${escapeHtml(s.direccion_nombre)}</div>
+            <span class="sello-mini" style="font-size:10.5px;">${escapeHtml(s.folio)}</span>
+          `;
+          card.addEventListener('click', ()=>openModal(s.id_solicitud));
+          col.appendChild(card);
+        });
+      }
+      kanban.appendChild(col);
+    });
+    if(all.length===0){
+      kanban.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="glyph">🗂️</div>Aún no hay solicitudes registradas en la base de datos.</div>';
+    }
+  }
+
+  // ---------- Modal ----------
+  const overlay = document.getElementById('overlay');
+  let currentId = null;
+
+  async function openModal(id){
+    currentId = id;
+    const all = await api('/solicitudes');
+    const sol = all.find(s=>s.id_solicitud===id);
+    if(!sol) return;
+
+    document.getElementById('modal-folio').textContent = sol.folio;
+    document.getElementById('modal-evento').textContent = sol.nombre_evento;
+    document.getElementById('modal-status-pill').innerHTML = `<span class="status-pill status-${cssKey(sol.estatus)}"><span class="status-dot"></span>${STATUS_LABEL[sol.estatus]}</span>`;
+    document.getElementById('modal-detail').innerHTML = `
+      <div class="result-row"><span class="k">Dirección</span><span class="v">${escapeHtml(sol.direccion_nombre)}</span></div>
+      <div class="result-row"><span class="k">Contacto</span><span class="v">${escapeHtml(sol.contacto_nombre||'—')} · ${escapeHtml(sol.correo_contacto||'')}</span></div>
+      <div class="result-row"><span class="k">Fecha / hora</span><span class="v">${escapeHtml(String(sol.fecha_evento).slice(0,10))} · ${escapeHtml(sol.hora_evento)}</span></div>
+      <div class="result-row"><span class="k">Lugar</span><span class="v">${escapeHtml(sol.lugar)}</span></div>
+      <div class="result-row"><span class="k">Texto sugerido</span><span class="v" style="max-width:280px;">${escapeHtml(sol.texto_sugerido)}</span></div>
+    `;
+
+    const actions = document.getElementById('modal-actions');
+    actions.innerHTML = '';
+    const allowed = NEXT_ALLOWED[sol.estatus] || [];
+    if(allowed.length===0){
+      actions.innerHTML = '<span style="font-size:12.5px;color:var(--text-soft);">Esta solicitud ya llegó a un estatus final.</span>';
+    } else {
+      allowed.forEach(st=>{
+        const b = document.createElement('button');
+        b.className = 'btn btn-sm ' + (st==='Rechazada' ? 'btn-ghost' : 'btn-primary');
+        b.textContent = 'Mover a ' + STATUS_LABEL[st];
+        b.addEventListener('click', ()=>changeStatus(st));
+        actions.appendChild(b);
+      });
+    }
+
+    document.getElementById('modal-comment').value = '';
+    document.getElementById('modal-timeline').innerHTML = '<div style="font-size:12px;font-weight:700;color:var(--text-soft);margin-bottom:6px;">Estatus registrado en historial_estatus (PostgreSQL)</div>';
+
+    overlay.classList.add('active');
+  }
+
+  async function changeStatus(nuevo){
+    const comentario = document.getElementById('modal-comment').value.trim();
+    try{
+      await api('/solicitudes/'+currentId+'/estatus', { method:'PATCH', body: JSON.stringify({estatus: nuevo, comentario: comentario||null}) });
+      toast('Estatus actualizado a "'+STATUS_LABEL[nuevo]+'" — se notificó al solicitante por correo (RF07)');
+      overlay.classList.remove('active');
+      renderKanban();
+    }catch(err){
+      toast('No se pudo actualizar: '+err.message);
+    }
+  }
+
+  document.getElementById('modal-close').addEventListener('click', ()=>overlay.classList.remove('active'));
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.classList.remove('active'); });
+
+  // ---------- Utils ----------
+  function escapeHtml(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+  function formatDate(iso){
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  }
+})();
+</script>
+</body>
+</html>

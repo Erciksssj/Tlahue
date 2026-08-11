@@ -1,0 +1,19 @@
+{
+  "name": "comsoc-tlahuelilpan-backend",
+  "version": "1.0.0",
+  "description": "API REST del Sistema de Gestion de Solicitudes de Difusion - COMSOC Tlahuelilpan",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.5"
+  }
+}

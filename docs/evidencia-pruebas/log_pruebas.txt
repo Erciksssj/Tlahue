@@ -1,0 +1,159 @@
+====================================================================
+REGISTRO DE EJECUCIÓN DE PRUEBAS — API COMSOC TLAHUELILPAN
+Entorno: Node.js v22 + Express + PostgreSQL 16 (entorno local de desarrollo)
+====================================================================
+
+--------------------------------------------------------------------
+CP-01 · Login con credenciales correctas
+--------------------------------------------------------------------
+POST /auth/login
+Body: {"correo":"comsoc@tlahuelilpan.gob.mx","contrasena":"admin2026"}
+Respuesta: HTTP 200
+{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...","usuario":{"id":1,"nombre":"Encargado Comunicación Social","rol":"Administrador"}}
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-02 · Login con contraseña incorrecta (RNF04)
+--------------------------------------------------------------------
+POST /auth/login
+Body: {"correo":"comsoc@tlahuelilpan.gob.mx","contrasena":"incorrecta"}
+Respuesta: HTTP 401
+{"error":"credenciales invalidas"}
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-03 · Registro de solicitud con campos faltantes (RF02)
+--------------------------------------------------------------------
+POST /solicitudes
+Body: {"nombre_evento":"Prueba incompleta"}
+Respuesta: HTTP 400
+{"error":"campos obligatorios faltantes","campos":["fecha_evento","hora_evento","lugar","texto_sugerido","id_direccion","contacto_nombre","contacto_correo"]}
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-04 · Registro de solicitud completa y generación de folio (RF01, RF03)
+--------------------------------------------------------------------
+POST /solicitudes
+Body: {"nombre_evento":"Feria del Empleo Municipal","fecha_evento":"2026-08-14","hora_evento":"10:00",
+       "lugar":"Auditorio Municipal","texto_sugerido":"Convocatoria abierta...","id_direccion":1, ...}
+Respuesta: HTTP 201
+{"mensaje":"solicitud registrada","solicitud":{"id_solicitud":1,"folio":"COMSOC-2026-001","estatus":"Recibida", ...}}
+RESULTADO: APROBADA — folio generado automáticamente por el trigger fn_generar_folio()
+
+--------------------------------------------------------------------
+CP-05 · Acceso al panel de control sin token (RF05, RNF04/RNF09)
+--------------------------------------------------------------------
+GET /solicitudes  (sin header Authorization)
+Respuesta: HTTP 401
+{"error":"token requerido"}
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-06 · Acceso al panel de control con token de Administrador (RF05)
+--------------------------------------------------------------------
+GET /solicitudes  (Authorization: Bearer <token>)
+Respuesta: HTTP 200 — lista de solicitudes con datos de la dirección solicitante (JOIN)
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-07 · Consulta pública por folio válido, sin autenticación (RF08)
+--------------------------------------------------------------------
+GET /solicitudes/COMSOC-2026-001
+Respuesta: HTTP 200
+{"folio":"COMSOC-2026-001","nombre_evento":"Feria del Empleo Municipal","estatus":"Recibida", ...,
+ "ultimo_cambio":{"estatus_anterior":null,"estatus_nuevo":"Recibida","comentario":"Solicitud registrada...","fecha_cambio":"..."}}
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-08 · Consulta por folio inexistente
+--------------------------------------------------------------------
+GET /solicitudes/COMSOC-9999-999
+Respuesta: HTTP 404
+{"error":"folio no encontrado"}
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-09 · Cambio de estatus violando la regla de negocio (Recibida → Publicada directo)
+--------------------------------------------------------------------
+PATCH /solicitudes/1/estatus
+Body: {"estatus":"Publicada"}
+Respuesta: HTTP 422
+{"error":"transicion no permitida: Recibida -> Publicada","permitidos":["En diseño","Rechazada"]}
+RESULTADO: APROBADA — la máquina de estados del backend bloquea la transición inválida
+
+--------------------------------------------------------------------
+CP-10 · Cambio de estatus válido: Recibida → En diseño (RF06)
+--------------------------------------------------------------------
+PATCH /solicitudes/1/estatus
+Body: {"estatus":"En diseño","comentario":"Turnada al diseñador grafico"}
+Respuesta: HTTP 200
+{"mensaje":"estatus actualizado a En diseño","notificacion":"correo enviado al solicitante (RF07)"}
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-11 · Cambio de estatus válido: En diseño → Publicada (RF06)
+--------------------------------------------------------------------
+PATCH /solicitudes/1/estatus
+Body: {"estatus":"Publicada","comentario":"Publicado en Facebook institucional"}
+Respuesta: HTTP 200 — estatus y comentario actualizados correctamente
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-12 · Verificación de trazabilidad completa en historial_estatus (RF09)
+--------------------------------------------------------------------
+GET /solicitudes/COMSOC-2026-001
+Respuesta: HTTP 200 — el campo "ultimo_cambio" refleja Recibida -> En diseño -> Publicada
+con fecha, comentario y (en la tabla historial_estatus) el usuario responsable
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-13 · Reporte mensual con datos reales (RF10, requiere Administrador)
+--------------------------------------------------------------------
+GET /reportes/mensual?anio=2026&mes=8  (Authorization: Bearer <token>)
+Respuesta: HTTP 200
+{"periodo":"2026-08","resumen":{"total_solicitudes":"4","recibidas":"3","en_diseno":"0",
+ "publicadas":"1","rechazadas":"0","tiempo_promedio_horas":"0.01"},
+ "top_direcciones":[...]}
+RESULTADO: APROBADA — datos calculados por el procedimiento almacenado sp_reporte_mensual()
+
+--------------------------------------------------------------------
+CP-14 · Acceso al reporte mensual sin token
+--------------------------------------------------------------------
+GET /reportes/mensual?anio=2026&mes=8  (sin token)
+Respuesta: HTTP 401 — {"error":"token requerido"}
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-15 · Rechazo de una solicitud (Recibida → Rechazada)
+--------------------------------------------------------------------
+PATCH /solicitudes/4/estatus
+Body: {"estatus":"Rechazada","comentario":"No corresponde a difusion publica."}
+Respuesta: HTTP 200
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-16 · Una solicitud Rechazada no puede reabrirse a Publicada (regla de negocio)
+--------------------------------------------------------------------
+PATCH /solicitudes/4/estatus
+Body: {"estatus":"Publicada"}
+Respuesta: HTTP 422
+{"error":"transicion no permitida: Rechazada -> Publicada","permitidos":[]}
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-17 · Prueba de extremo a extremo (End-to-End) vía navegador (Playwright/Chromium)
+--------------------------------------------------------------------
+Escenario: una dirección municipal llena el formulario web completo (con archivo
+adjunto), lo envía, recibe folio COMSOC-2026-005; consulta el folio en la vista
+pública; el encargado inicia sesión en el panel, localiza la solicitud en la
+columna "Recibida" y la mueve a "En diseño" con un comentario.
+Verificación en base de datos tras la prueba:
+  solicitud.estatus = 'En diseño'
+  historial_estatus: Recibida -> En diseño con comentario y fecha correctos
+Evidencia fotográfica: docs/evidencia-pruebas/screenshots/01 a 08.png
+RESULTADO: APROBADA — el flujo opera de manera consistente entre frontend,
+backend y base de datos, sin intervención manual en la base de datos.
+
+====================================================================
+RESUMEN: 17 casos ejecutados · 17 aprobados · 0 no aprobados
+====================================================================

@@ -1,0 +1,49 @@
+====================================================================
+EVIDENCIA — MÓDULO DE NOTIFICACIONES (RF04, RF07)
+====================================================================
+
+--------------------------------------------------------------------
+CP-18 · Notificación de confirmación en modo simulado (sin SENDGRID_API_KEY)
+--------------------------------------------------------------------
+POST /solicitudes (registro de una solicitud completa)
+Respuesta: HTTP 201
+"notificacion": {"enviado": true, "modo": "simulado"}
+
+Contenido registrado en backend/notificaciones.log:
+  Para: laura.hernandez@tlahuelilpan.gob.mx
+  Asunto: Solicitud de difusión recibida — Folio COMSOC-2026-001
+  (cuerpo con folio, nombre del evento y estatus incluidos correctamente)
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-19 · Notificación de cambio de estatus en modo simulado
+--------------------------------------------------------------------
+PATCH /solicitudes/1/estatus  {"estatus":"En diseño","comentario":"Turnada al diseñador"}
+Respuesta: HTTP 200
+"notificacion": {"enviado": true, "modo": "simulado"}
+Contenido registrado en backend/notificaciones.log con el comentario incluido.
+RESULTADO: APROBADA
+
+--------------------------------------------------------------------
+CP-20 · Resiliencia del módulo en modo real ante fallo de envío
+--------------------------------------------------------------------
+Configuración: SENDGRID_API_KEY definida con una API key de prueba;
+intento real de envío contra api.sendgrid.com.
+
+Resultado observado: la llamada a la API de SendGrid fue rechazada
+(el entorno de desarrollo no tiene salida de red hacia ese host —
+x-deny-reason: host_not_allowed — comportamiento equivalente, para
+efectos de esta prueba, a una falla de entrega real).
+
+Respuesta de la API del sistema: HTTP 201
+"notificacion": {"enviado": false, "modo": "real", "error": "Forbidden"}
+
+Verificación: pese al fallo del proveedor externo, (a) la solicitud
+se registró correctamente en la base de datos, (b) el folio se generó
+con normalidad, (c) la notificación no se perdió: quedó registrada
+automáticamente en notificaciones.log como respaldo, y (d) el proceso
+no se interrumpió ni devolvió un error 500 al usuario.
+RESULTADO: APROBADA — el sistema degrada de forma segura (graceful
+degradation) ante la falla de un servicio externo.
+
+====================================================================
