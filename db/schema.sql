@@ -1,4 +1,18 @@
 -- =====================================================================
+-- Proyecto: Sistema de Gestion de Solicitudes de Difusion - COMSOC Tlahuelilpan
+-- Autores: Eick Trejo Resendiz, Alexis Blas Castillo
+-- Universidad Tecnologica de Tula-Tepeji
+--
+-- Este software fue desarrollado durante el cuatrimestre mayo-agosto 2026
+-- en la asignatura de Integradora / Proyecto de Vinculacion (ajustar al
+-- nombre exacto de la asignatura).
+--
+-- Los derechos morales pertenecen a sus autores.
+-- Queda prohibida la eliminacion de los creditos originales y el uso o
+-- modificacion del codigo sin autorizacion de los autores.
+-- =====================================================================
+
+-- =====================================================================
 -- Sistema de Gestion de Solicitudes de Difusion - COMSOC Tlahuelilpan
 -- Esquema de base de datos (PostgreSQL) - conforme al modelo de datos
 -- definido en la Fase 3, Subfase 3.7
@@ -195,3 +209,34 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO comsoc_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO comsoc_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO comsoc_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO comsoc_app;
+
+-- ---------------------------------------------------------------------
+-- Fix: recrear sp_reporte_mensual (la version original quedo con 'En
+-- diseño' con tilde por el mismo problema de codificacion de Windows
+-- corregido para la tabla solicitud; esta funcion no se habia
+-- regenerado y seguia sin coincidir con el valor ASCII 'En diseno')
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION sp_reporte_mensual(p_anio INT, p_mes INT)
+RETURNS TABLE (
+    total_solicitudes BIGINT,
+    recibidas BIGINT,
+    en_diseno BIGINT,
+    publicadas BIGINT,
+    rechazadas BIGINT,
+    tiempo_promedio_horas NUMERIC
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        COUNT(*)::BIGINT,
+        COUNT(*) FILTER (WHERE estatus='Recibida')::BIGINT,
+        COUNT(*) FILTER (WHERE estatus='En diseno')::BIGINT,
+        COUNT(*) FILTER (WHERE estatus='Publicada')::BIGINT,
+        COUNT(*) FILTER (WHERE estatus='Rechazada')::BIGINT,
+        ROUND(AVG(EXTRACT(EPOCH FROM (h.fecha_cambio - s.fecha_creacion))/3600.0) FILTER (WHERE s.estatus='Publicada'), 2)
+    FROM solicitud s
+    LEFT JOIN historial_estatus h ON h.id_solicitud = s.id_solicitud AND h.estatus_nuevo = 'Publicada'
+    WHERE EXTRACT(YEAR FROM s.fecha_creacion) = p_anio
+      AND EXTRACT(MONTH FROM s.fecha_creacion) = p_mes;
+END;
+$$ LANGUAGE plpgsql;

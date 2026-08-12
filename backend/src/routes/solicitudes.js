@@ -1,3 +1,17 @@
+/**
+ * Proyecto: Sistema de Gestión de Solicitudes de Difusión — COMSOC Tlahuelilpan
+ * Autores: Eick Trejo Resendiz, Alexis Blas Castillo
+ * Universidad Tecnológica de Tula-Tepeji
+ *
+ * Este software fue desarrollado durante el cuatrimestre mayo-agosto 2026
+ * en la asignatura de Integradora / Proyecto de Vinculación (ajustar al
+ * nombre exacto de la asignatura).
+ *
+ * Los derechos morales pertenecen a sus autores.
+ * Queda prohibida la eliminación de los créditos originales y el uso o
+ * modificación del código sin autorización de los autores.
+ */
+
 const express = require("express");
 const pool = require("../db/pool");
 const { requireAuth } = require("../middleware/auth");
@@ -64,6 +78,31 @@ router.get("/", requireAuth(["Administrador"]), async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "error al consultar solicitudes" });
+  }
+});
+
+// GET /solicitudes/id/:id  (detalle completo con historial, para la pantalla de detalle - RF09)
+router.get("/id/:id", requireAuth(["Administrador"]), async (req, res) => {
+  try {
+    const sol = await pool.query(
+      `SELECT s.*, d.nombre AS direccion_nombre
+       FROM solicitud s JOIN direccion d ON d.id_direccion = s.id_direccion
+       WHERE s.id_solicitud = $1`,
+      [req.params.id]
+    );
+    if (sol.rows.length === 0) return res.status(404).json({ error: "solicitud no encontrada" });
+
+    const hist = await pool.query(
+      `SELECT estatus_anterior, estatus_nuevo, comentario, fecha_cambio
+       FROM historial_estatus WHERE id_solicitud = $1 ORDER BY fecha_cambio ASC`,
+      [req.params.id]
+    );
+    const adj = await pool.query("SELECT url_archivo, tipo FROM adjunto WHERE id_solicitud = $1", [req.params.id]);
+
+    res.json({ ...sol.rows[0], historial: hist.rows, adjuntos: adj.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "error al consultar el detalle de la solicitud" });
   }
 });
 
